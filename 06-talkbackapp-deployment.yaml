@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: talkbackapp
+  namespace: n8n-slack-demo
+  labels:
+    app: talkbackapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: talkbackapp
+  template:
+    metadata:
+      labels:
+        app: talkbackapp
+    spec:
+      containers:
+        - name: talkbackapp
+          # Build from ./talkbackapp/Dockerfile and push to a registry your cluster can pull from,
+          # e.g.:
+          #   docker build -t <your-registry>/talkbackapp:latest ./talkbackapp
+          #   docker push <your-registry>/talkbackapp:latest
+          # then set the image below accordingly. For local clusters (kind/minikube) you can
+          # load the image directly instead of pushing to a registry (see README.md).
+          image: talkbackapp:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+              name: http
+          env:
+            - name: PORT
+              value: "3000"
+            - name: N8N_SEND_WEBHOOK_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: talkbackapp-config
+                  key: N8N_SEND_WEBHOOK_URL
+            - name: INBOUND_SHARED_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: talkbackapp-secrets
+                  key: INBOUND_SHARED_SECRET
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi

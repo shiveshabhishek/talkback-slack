@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: talkbackapp
+  namespace: n8n-slack-demo
+spec:
+  selector:
+    app: talkbackapp
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+  type: LoadBalancer   # cloud-provider-kind assigns an external IP reachable from the host

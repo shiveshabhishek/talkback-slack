@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: n8n
+  namespace: n8n-slack-demo
+  labels:
+    app: n8n
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate   # avoid two n8n pods writing to the same RWO volume at once
+  selector:
+    matchLabels:
+      app: n8n
+  template:
+    metadata:
+      labels:
+        app: n8n
+    spec:
+      containers:
+        - name: n8n
+          image: docker.n8n.io/n8nio/n8n:latest
+          ports:
+            - containerPort: 5678
+              name: http
+          env:
+            - name: N8N_HOST
+              value: "PLACEHOLDER_N8N_LB_IP"    # set to the n8n Service's LoadBalancer IP (see README step 3)
+            - name: N8N_PORT
+              value: "5678"
+            - name: N8N_PROTOCOL
+              value: "http"
+            - name: N8N_SECURE_COOKIE
+              value: "false"   # required when accessing over plain HTTP (no TLS) / Safari
+            - name: WEBHOOK_URL
+              value: "http://PLACEHOLDER_N8N_LB_IP:5678/"   # base URL n8n uses when generating webhook URLs
+            - name: N8N_EDITOR_BASE_URL
+              value: "http://PLACEHOLDER_N8N_LB_IP:5678/"
+            - name: NODE_OPTIONS
+              value: "--max-old-space-size=1536"   # keep V8 heap comfortably under the container memory limit
+            - name: GENERIC_TIMEZONE
+              value: "UTC"
+            - name: N8N_BASIC_AUTH_ACTIVE
+              value: "true"
+            - name: N8N_BASIC_AUTH_USER
+              valueFrom:
+                secretKeyRef:
+                  name: n8n-secrets
+                  key: N8N_BASIC_AUTH_USER
+            - name: N8N_BASIC_AUTH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: n8n-secrets
+                  key: N8N_BASIC_AUTH_PASSWORD
+            - name: N8N_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: n8n-secrets
+                  key: N8N_ENCRYPTION_KEY
+          volumeMounts:
+            - name: n8n-data
+              mountPath: /home/node/.n8n
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 5678
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 5678
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 200m
+              memory: 768Mi
+            limits:
+              cpu: 1000m
+              memory: 2Gi
+      volumes:
+        - name: n8n-data
+          persistentVolumeClaim:
+            claimName: n8n-data

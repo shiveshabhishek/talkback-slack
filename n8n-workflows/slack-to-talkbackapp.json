@@ -1,0 +1,127 @@
+{
+  "name": "Slack -> TalkbackApp",
+  "nodes": [
+    {
+      "parameters": {
+        "trigger": ["message"],
+        "channelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "REPLACE_WITH_SLACK_CHANNEL_ID"
+        },
+        "options": {}
+      },
+      "id": "slack-trigger",
+      "name": "Slack Trigger",
+      "type": "n8n-nodes-base.slackTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "slack-events",
+      "credentials": {
+        "slackApi": {
+          "id": "REPLACE_AFTER_IMPORT",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "no-bot-id",
+              "leftValue": "={{$json.bot_id}}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "empty" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-bot",
+      "name": "Ignore bot messages",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://talkbackapp.n8n-slack-demo.svc.cluster.local:3000/api/thread",
+        "options": {}
+      },
+      "id": "get-current-thread",
+      "name": "Get Current Thread",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "has-thread-ts",
+              "leftValue": "={{$node[\"Slack Trigger\"].json.thread_ts}}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEmpty" }
+            },
+            {
+              "id": "thread-matches-active",
+              "leftValue": "={{$node[\"Slack Trigger\"].json.thread_ts}}",
+              "rightValue": "={{$json.thread_ts}}",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-active-thread",
+      "name": "Only active thread",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [920, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://talkbackapp.n8n-slack-demo.svc.cluster.local:3000/api/inbox",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "x-inbox-secret", "value": "REPLACE_WITH_SHARED_SECRET" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { text: $node[\"Slack Trigger\"].json.text, user: $node[\"Slack Trigger\"].json.user, channel: $node[\"Slack Trigger\"].json.channel, ts: $node[\"Slack Trigger\"].json.ts, thread_ts: $node[\"Slack Trigger\"].json.thread_ts } }}",
+        "options": {}
+      },
+      "id": "http-to-talkbackapp",
+      "name": "Forward to TalkbackApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1140, 300]
+    }
+  ],
+  "connections": {
+    "Slack Trigger": {
+      "main": [[{ "node": "Ignore bot messages", "type": "main", "index": 0 }]]
+    },
+    "Ignore bot messages": {
+      "main": [[{ "node": "Get Current Thread", "type": "main", "index": 0 }]]
+    },
+    "Get Current Thread": {
+      "main": [[{ "node": "Only active thread", "type": "main", "index": 0 }]]
+    },
+    "Only active thread": {
+      "main": [[{ "node": "Forward to TalkbackApp", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}

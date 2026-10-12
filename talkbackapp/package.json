@@ -1,0 +1,16 @@
+{
+  "name": "talkbackapp",
+  "version": "1.0.0",
+  "description": "Minimal UI + backend that sends messages to Slack via n8n and receives Slack replies back via n8n",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

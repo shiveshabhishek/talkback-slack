@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: n8n
+  namespace: n8n-slack-demo
+spec:
+  selector:
+    app: n8n
+  ports:
+    - name: http
+      port: 5678
+      targetPort: 5678
+  type: LoadBalancer   # cloud-provider-kind assigns an external IP reachable from the host

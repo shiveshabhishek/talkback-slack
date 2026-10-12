@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: talkbackapp-config
+  namespace: n8n-slack-demo
+data:
+  # Internal cluster URL for n8n's "send-to-slack" webhook (workflow 1: send-to-slack.json)
+  N8N_SEND_WEBHOOK_URL: "http://n8n.n8n-slack-demo.svc.cluster.local:5678/webhook/send-to-slack"
